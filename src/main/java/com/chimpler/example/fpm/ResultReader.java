@@ -16,6 +16,7 @@ import org.apache.hadoop.io.SequenceFile.Reader;
 import org.apache.hadoop.io.Text;
 import org.apache.mahout.common.Pair;
 import org.apache.mahout.fpm.pfpgrowth.convertors.string.TopKStringPatterns;
+import org.apache.mahout.fpm.pfpgrowth.fpgrowth.FPGrowth;
 
 public class ResultReader {
 	public static Map<Integer, Long> readFrequency(Configuration configuration, String fileName) throws Exception {
