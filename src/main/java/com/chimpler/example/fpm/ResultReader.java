@@ -19,21 +19,21 @@ import org.apache.mahout.fpm.pfpgrowth.convertors.string.TopKStringPatterns;
 import org.apache.mahout.fpm.pfpgrowth.fpgrowth.FPGrowth;
 
 public class ResultReader {
-	public static Map<Integer, Long> readFrequency(Configuration configuration, String fileName) throws Exception {
+	public static Map<String, Long> readFrequency(Configuration configuration, String fileName) throws Exception {
 		FileSystem fs = FileSystem.get(configuration);
 		Reader frequencyReader = new SequenceFile.Reader(fs, 
 				new Path(fileName), configuration);
-		Map<Integer, Long> frequency = new HashMap<Integer, Long>();
+		Map<String, Long> frequency = new HashMap<String, Long>();
 		Text key = new Text();
 		LongWritable value = new LongWritable();
 		while(frequencyReader.next(key, value)) {
-			frequency.put(Integer.parseInt(key.toString()), value.get());
+			frequency.put(key.toString(), value.get());
 		}
 		return frequency;
 	}
 	
-	public static Map<Integer, String> readMapping(String fileName) throws Exception {
-		Map<Integer, String> itemById = new HashMap<Integer, String>();
+	public static Map<String, String> readMapping(String fileName) throws Exception {
+		Map<String, String> itemById = new HashMap<String, String>();
 		BufferedReader csvReader = new BufferedReader(new FileReader(fileName));
 		while(true) {
 			String line = csvReader.readLine();
@@ -42,7 +42,7 @@ public class ResultReader {
 			}
 			
 			String[] tokens = line.split(",", 2);
-			itemById.put(Integer.parseInt(tokens[1]), tokens[0]);
+			itemById.put(tokens[1], tokens[0]);
 		}
 		return itemById;
 	}
@@ -51,11 +51,10 @@ public class ResultReader {
 			Configuration configuration,
 			String fileName,
 			int transactionCount,
-			Map<Integer, Long> frequency,
-			Map<Integer, String> itemById,
+			Map<String, Long> frequency,
+			Map<String, String> itemById,
 			double minSupport, double minConfidence) throws Exception {
 		FileSystem fs = FileSystem.get(configuration);
-
 		Reader frequentPatternsReader = new SequenceFile.Reader(fs, 
 				new Path(fileName), configuration);
 		Text key = new Text();
@@ -72,6 +71,7 @@ public class ResultReader {
 				if (i == 0) {
 					firstFrequencyItem = occurrence;
 					firstItemId = itemList.get(0);
+//					System.out.println(firstItemId);
 				} else {
 					double support = (double)occurrence / transactionCount;
 					double confidence = (double)occurrence / firstFrequencyItem;
@@ -80,10 +80,10 @@ public class ResultReader {
 						List<String> listWithoutFirstItem = new ArrayList<String>();
 						for(String itemId: itemList) {
 							if (!itemId.equals(firstItemId)) {
-								listWithoutFirstItem.add(itemById.get(Integer.parseInt(itemId)));
+								listWithoutFirstItem.add(itemById.get(itemId));
 							}
 						}
-						String firstItem = itemById.get(Integer.parseInt(firstItemId));
+						String firstItem = itemById.get(firstItemId);
 						listWithoutFirstItem.remove(firstItemId);
 						System.out.printf(
 							"%s => %s: supp=%.3f, conf=%.3f",
@@ -92,24 +92,24 @@ public class ResultReader {
 							support,
 							confidence);
 
-						if (itemList.size() == 2) {
-							// we can easily compute the lift and the conviction for set of
-							// size 2, so do it
-							int otherItemId = -1;
-							for(String itemId: itemList) {
-								if (!itemId.equals(firstItemId)) {
-									otherItemId = Integer.parseInt(itemId);
-									break;
-								}
-							}
-							long otherItemOccurrence = frequency.get(otherItemId);
-
-							double lift = ((double)occurrence * transactionCount) / (firstFrequencyItem * otherItemOccurrence);
-							double conviction = (1.0 - (double)otherItemOccurrence / transactionCount) / (1.0 - confidence);
-							System.out.printf(
-								", lift=%.3f, conviction=%.3f",
-								lift, conviction);
-						}
+//						if (itemList.size() == 2) {
+//							// we can easily compute the lift and the conviction for set of
+//							// size 2, so do it
+//							int otherItemId = -1;
+//							for(String itemId: itemList) {
+//								if (!itemId.equals(firstItemId)) {
+//									otherItemId = Integer.parseInt(itemId);
+//									break;
+//								}
+//							}
+//							long otherItemOccurrence = frequency.get(otherItemId);
+//
+//							double lift = ((double)occurrence * transactionCount) / (firstFrequencyItem * otherItemOccurrence);
+//							double conviction = (1.0 - (double)otherItemOccurrence / transactionCount) / (1.0 - confidence);
+//							System.out.printf(
+//								", lift=%.3f, conviction=%.3f",
+//								lift, conviction);
+//						}
 						System.out.printf("\n");
 					}
 				}
@@ -134,10 +134,10 @@ public class ResultReader {
 		double minSupport = Double.parseDouble(args[4]);
 		double minConfidence = Double.parseDouble(args[5]);
 
-		Map<Integer, String> itemById = readMapping(mappingCsvFilename);
+		Map<String, String> itemById = readMapping(mappingCsvFilename);
 
 		Configuration configuration = new Configuration();
-		Map<Integer, Long> frequency = readFrequency(configuration, frequencyFilename);
+		Map<String, Long> frequency = readFrequency(configuration, frequencyFilename);
 		readFrequentPatterns(configuration, frequentPatternsFilename, 
 				transactionCount, frequency, itemById, minSupport, minConfidence);
 		
