@@ -1,7 +1,9 @@
 package com.chimpler.example.fpm;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -54,6 +56,9 @@ public class ResultReader {
 			Map<String, Long> frequency,
 			Map<String, String> itemById,
 			double minSupport, double minConfidence) throws Exception {
+		
+		BufferedWriter ruleWriter = new BufferedWriter(new FileWriter("helthin_assoRule_" + String.valueOf(minSupport) + 
+				"_" + String.valueOf(minConfidence) + ".csv"));
 		FileSystem fs = FileSystem.get(configuration);
 		Reader frequentPatternsReader = new SequenceFile.Reader(fs, 
 				new Path(fileName), configuration);
@@ -71,7 +76,6 @@ public class ResultReader {
 				if (i == 0) {
 					firstFrequencyItem = occurrence;
 					firstItemId = itemList.get(0);
-//					System.out.println(firstItemId);
 				} else {
 					double support = (double)occurrence / transactionCount;
 					double confidence = (double)occurrence / firstFrequencyItem;
@@ -85,31 +89,38 @@ public class ResultReader {
 						}
 						String firstItem = itemById.get(firstItemId);
 						listWithoutFirstItem.remove(firstItemId);
-						System.out.printf(
-							"%s => %s: supp=%.3f, conf=%.3f",
-							listWithoutFirstItem,
-							firstItem,
-							support,
-							confidence);
+						
+						String listStr = "";
+						for(String s : listWithoutFirstItem)
+							listStr += s + "|";
+						
+						ruleWriter.write(listStr + "," + firstItem + "," + 
+								String.valueOf(support) + "," + String.valueOf(confidence) + "\n");
+//						System.out.printf(
+//							"%s => %s: supp=%.3f, conf=%.3f",
+//							listWithoutFirstItem,
+//							firstItem,
+//							support,
+//							confidence);
+						
+						if (itemList.size() == 2) {
+							// we can easily compute the lift and the conviction for set of
+							// size 2, so do it
+							String otherItemId = "";
+							for(String itemId: itemList) {
+								if (!itemId.equals(firstItemId)) {
+									otherItemId = itemId;
+									break;
+								}
+							}
+							long otherItemOccurrence = frequency.get(otherItemId);
 
-//						if (itemList.size() == 2) {
-//							// we can easily compute the lift and the conviction for set of
-//							// size 2, so do it
-//							int otherItemId = -1;
-//							for(String itemId: itemList) {
-//								if (!itemId.equals(firstItemId)) {
-//									otherItemId = Integer.parseInt(itemId);
-//									break;
-//								}
-//							}
-//							long otherItemOccurrence = frequency.get(otherItemId);
-//
-//							double lift = ((double)occurrence * transactionCount) / (firstFrequencyItem * otherItemOccurrence);
-//							double conviction = (1.0 - (double)otherItemOccurrence / transactionCount) / (1.0 - confidence);
-//							System.out.printf(
-//								", lift=%.3f, conviction=%.3f",
-//								lift, conviction);
-//						}
+							double lift = ((double)occurrence * transactionCount) / (firstFrequencyItem * otherItemOccurrence);
+							double conviction = (1.0 - (double)otherItemOccurrence / transactionCount) / (1.0 - confidence);
+							System.out.printf(
+								", lift=%.3f, conviction=%.3f",
+								lift, conviction);
+						}
 						System.out.printf("\n");
 					}
 				}
@@ -117,27 +128,39 @@ public class ResultReader {
 			}
 		}
 		frequentPatternsReader.close();
-		
+		ruleWriter.close();
 	}
 	
 	public static void main(String args[]) throws Exception {
+		
+		/*
 		if (args.length != 6) {
 			System.err.println("Arguments: [transaction count] [mapping.csv path] [fList path] "
 					+ "[frequentPatterns path] [minSupport] [minConfidence]");
 			return;
 		}
-
+		*/
+		
+		/*
 		int transactionCount = Integer.parseInt(args[0]);
 		String mappingCsvFilename = args[1];
 		String frequencyFilename = args[2];
 		String frequentPatternsFilename = args[3];
 		double minSupport = Double.parseDouble(args[4]);
 		double minConfidence = Double.parseDouble(args[5]);
-
+		 */
+		
+		int transactionCount = 16413;
+		String mappingCsvFilename = "./helthin/product_mapping.csv";
+		String frequencyFilename = "./helthin/fList.seq";
+		String frequentPatternsFilename = "./helthin/frequentpatterns.seq";
+		double minSupport = 0.001d;
+		double minConfidence = 0.02d;
 		Map<String, String> itemById = readMapping(mappingCsvFilename);
 
 		Configuration configuration = new Configuration();
 		Map<String, Long> frequency = readFrequency(configuration, frequencyFilename);
+		
 		readFrequentPatterns(configuration, frequentPatternsFilename, 
 				transactionCount, frequency, itemById, minSupport, minConfidence);
 		
